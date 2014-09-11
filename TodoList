@@ -1,0 +1,8 @@
+
+Pourquoi l'update de jeedom.xml échou?
+1- Changement des droit utilisateur sur le fichier "jeedom.xml" afin de pouvoir l'éditer avec la commande "update" de jeedom.
+--> sudo chmod 777 jeedom.xml
+
+Pourquoi j'ai le retour "Aucune correspondance pour l'id"
+1- Il semblerais que se soit le code de génération de l'id qui soit défectueur --> génère un ramdom
+--> Voir pour le fixer en rapport à celui de "jeedom.xml"

@@ -1,0 +1,10 @@
+{
+  "modules" : { 
+    "jeedom"  : {
+      "description": "Plugin pour commander jeedom",
+      "version": "1.0",
+      "addrJeedom"    : "127.0.0.1/jeedom",
+      "apikeyJeedom"  : "e54sxrhrji34s5y8rknp"
+    }
+  }
+}
