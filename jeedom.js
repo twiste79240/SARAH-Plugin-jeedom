@@ -16,39 +16,57 @@
  */
 
  exports.action = function(data, callback, config, SARAH) {
-    var debug = false;
+    var debug = false;//true;
 	
-	/************************************************
+	/************************************************************************************************
 	** require list
-	************************************************/
-	var EventEmitter = require('events').EventEmitter;
+	************************************************************************************************/
+	var EventEmitter = require('events').EventEmitter; //
 	
-	/************************************************
+	
+	/************************************************************************************************
 	** Path list
-	************************************************/
+	************************************************************************************************/
 	var pathXml = 'plugins/jeedom/jeedom.xml';
-	//var pathJson = 'plugins/jeedom/jeedom.json';
+	var pathJeedomApi = '/core/api/jeeApi.php';
 	
-	/************************************************
+	
+	/************************************************************************************************
 	** log method
-	************************************************/
+	************************************************************************************************/
 	var log = new EventEmitter();
 	
-    log.on('log', function(message) {
+	/***************************************************
+	** @description Main log
+	** @function log
+	** @param message string
+	***************************************************/
+	log.on('log', function(message) {
 		console.log(message);
-    });
+	});
 	
-    log.on('debugLog', function(message) {
+	/***************************************************
+	** @description Debug log
+	** @function debugLog
+	** @param message string
+	***************************************************/
+	log.on('debugLog', function(message) {
 		if (debug) {
 			console.log(message);
 		}
-    });
+	});
 	
-	/************************************************
+	
+	/************************************************************************************************
 	** callbackReturn method
-	************************************************/
+	************************************************************************************************/
 	var callbackReturn = new EventEmitter();
 	
+	/***************************************************
+	** @description Set the tts message
+	** @function tts
+	** @param message string
+	***************************************************/
     callbackReturn.on('tts', function(message) {
 		log.emit('debugLog', '>> callbackReturn method "tts"');
 		log.emit('log', message);
@@ -56,52 +74,48 @@
 		log.emit('debugLog', '<< callbackReturn method "tts"');
     });
 	
-	/************************************************
+	
+	/************************************************************************************************
 	** interactionShortcut method
-	************************************************/
+	************************************************************************************************/
 	var interactionShortcut = new EventEmitter();
 	
-	interactionShortcut.on('detection', function(sentence) {
-		log.emit('debugLog', '>> interactionShortcut method "detection"');
-		
-		interactionShortcut.emit('make');
-		//callbackReturn.emit('tts', 'interactionShortcut method "detection" in progress');
-		log.emit('debugLog', '<< interactionShortcut method "detection"');
-	});
-	
-	interactionShortcut.on('make', function() {
-		log.emit('debugLog', '>> interactionShortcut method "make"');
-		interactionShortcut.emit('openFile');
-	});
-	
-	interactionShortcut.on('openFile', function() {
-		log.emit('debugLog', '>> interactionShortcut method "openFile"');
+	/***************************************************
+	** @description Chose the raspberry pi process to decode sentence
+	** @function raspberryModeStart
+	***************************************************/
+	interactionShortcut.on('raspberryModeStart', function() {
+		log.emit('debugLog', '>> interactionShortcut method "raspberryModeStart"');
 		var fs = require('fs');
 		fs.readFile(pathXml, 'utf8', function(err, xml) {
 			if (err) {
 				log.emit('log', 'Reading file "' + pathXml + '" failed');
 				log.emit('debugLog', err);
-				callbackReturn.emit('tts', 'Making interaction for raspberry pi failed');
-				log.emit('debugLog', '<< interactionShortcut method "make"');
+				callbackReturn.emit('tts', "ERREUR Sarah: lecture du fichier jeedom.xml impossible");
+				log.emit('debugLog', '<< interactionShortcut method "raspberryModeStart"');
 			}
 			else {
 				log.emit('debugLog', 'Reading file "' + pathXml + '" succeed');
 				log.emit('debugLog', xml);
 				interactionShortcut.emit('convertXmlToJson', xml);
-				log.emit('debugLog', '<< interactionShortcut method "openFile"');
+				log.emit('debugLog', '<< interactionShortcut method "raspberryModeStart"');
 			}
 		});
 	});
 	
+	/***************************************************
+	** @description Chose the raspberry pi process to decode sentence to compare sentence to xml file
+	** @function convertXmlToJson
+	** @param file _xml
+	***************************************************/
 	interactionShortcut.on('convertXmlToJson', function(_xml) {
 		log.emit('debugLog', '>> interactionShortcut method "convertXmlToJson"');
-		
 		var xml2jsStringParsor = require('xml2js').parseString;
 		xml2jsStringParsor(_xml, function (err, json) {
 			if ( err ) {
 				log.emit('log', 'Conversion xml to json failed');
 				log.emit('debugLog', err);
-				callbackReturn.emit('tts', 'Conversion xml to json for raspberry pi failed');
+				callbackReturn.emit('tts', "ERREUR Sarah: conversion du fichier jeedom.xml en json impossible");
 				log.emit('debugLog', '<< interactionShortcut method "convertXmlToJson"');
 			} else {
 				log.emit('debugLog', 'Conversion xml to json for raspberry pi succeed');
@@ -112,57 +126,72 @@
 		});
 	});
 	
+	/***************************************************
+	** @description Extraction interaction of json
+	** @function extractionFromJson
+	** @param file _json
+	***************************************************/
 	interactionShortcut.on('extractionFromJson', function(_json) {
 		log.emit('debugLog', '>> interactionShortcut method "extractionFromJson"');
-		
-		function charFilter(_string) {
-			_string = _string.toLowerCase();
-			_string = _string.replace(/[èéêë]/g,"e");
-			_string = _string.replace(/[ç]/g,"c");
-			_string = _string.replace(/[à]/g,"e");
-			return _string;
-		}
-		
 		var interactionList = new Array();
 		//Check all Sarah user
-		for (sarahUser in _json.grammar.rule) {
-			var key = _json.grammar.rule[sarahUser].item[0];
-			var keyTab = charFilter(key);
-			interactionList[keyTab] = new Array();
-			
-			for (interactionInfo in _json.grammar.rule[sarahUser]['one-of'][0].item) {
-				var interactionTab = _json.grammar.rule[sarahUser]['one-of'][0].item[interactionInfo]['_'];
-				interactionTab = charFilter(interactionTab);
-				interactionList[keyTab][interactionTab] = new Array();
+		try {
+			for (sarahUser in _json.grammar.rule) {
+				var keyTab = ClearString(_json.grammar.rule[sarahUser].item[0]);
+				interactionList[keyTab] = new Array();
 				
-				var interactionTag = _json.grammar.rule[sarahUser]['one-of'][0].item[interactionInfo]['tag'][0];
-				
-				var interactionId = interactionTag.slice(0,interactionTag.search(';'));
-				interactionId = interactionId.slice(interactionId.indexOf('"') + 1,interactionId.lastIndexOf('"'));
-				interactionList[keyTab][interactionTab]['id'] = interactionId;
-				
-				var interactionMethod = interactionTag.slice(interactionTag.search(';') + 1);
-				interactionMethod = interactionMethod.slice(interactionMethod.indexOf('"') + 1,interactionMethod.lastIndexOf('"'));
-				interactionList[keyTab][interactionTab]['method'] = interactionMethod;
+				for (interactionInfo in _json.grammar.rule[sarahUser]['one-of'][0].item) {
+					var interactionTab = ClearString(_json.grammar.rule[sarahUser]['one-of'][0].item[interactionInfo]['_']);
+					interactionList[keyTab][interactionTab] = new Array();
+					
+					var interactionTag = _json.grammar.rule[sarahUser]['one-of'][0].item[interactionInfo]['tag'][0];
+					
+					var interactionId = interactionTag.slice(0,interactionTag.search(';'));
+					interactionId = interactionId.slice(interactionId.indexOf('"') + 1,interactionId.lastIndexOf('"'));
+					interactionList[keyTab][interactionTab]['id'] = interactionId;
+					
+					var interactionMethod = interactionTag.slice(interactionTag.search(';') + 1);
+					interactionMethod = interactionMethod.slice(interactionMethod.indexOf('"') + 1,interactionMethod.lastIndexOf('"'));
+					interactionList[keyTab][interactionTab]['method'] = interactionMethod;
+				}
 			}
+		} catch (e)  {
+			log.emit('log', 'Extraction json failed');
+			log.emit('debugLog', e);
+			callbackReturn.emit('tts', "ERREUR Sarah: l'extraction des interactions a échoué");
+			log.emit('debugLog', '<< interactionShortcut method "extractionFromJson"');
 		}
-		log.emit('debugLog', interactionList);
-		
-		
-		var tmp = 0;
-		var nb = 0;
-		var string = data.emulate;
+		interactionShortcut.emit('checkSentence', interactionList);
+		log.emit('debugLog', '<< interactionShortcut method "extractionFromJson"');
+	});
+	
+	/***************************************************
+	** @description Compare sentence with interaction list
+	** @function checkSentence
+	** @param array interactionList
+	***************************************************/
+	interactionShortcut.on('checkSentence', function(interactionList) {
+		log.emit('debugLog', '>> interactionShortcut method "checkSentence"');
+		log.emit('debugLog', data.emulate);
+		var string = ClearString(data.emulate);
 		log.emit('debugLog', string);
-		string = charFilter(string);
-		log.emit('debugLog', string);
 		
+		//Check all user
+		var n = 0;
 		for (key in interactionList) {
-			tmp = string.search(key);
+			n = string.search(key);
 			
-			if (tmp != -1) {
+			if (n != -1) {
+				string = ClearString(string.replace(key, ""));
+				
+				//Check all interaction sentence
 				for (sentence in interactionList[key]) {
-					tmp = string.search(sentence);
-					if (tmp != -1) {
+					n = string.search(sentence);
+					
+					if (n != -1) {
+						string = ClearString(string.replace(sentence, ""));
+						
+						//Set information for next step
 						data.id = interactionList[key][sentence]['id'];
 						data.method = interactionList[key][sentence]['method'];
 						break;
@@ -170,97 +199,77 @@
 				}
 			}
 		}
+		
 		log.emit('debugLog', 'id --> ' + data.id);
 		log.emit('debugLog', 'method --> ' + data.method);
-		jeedomMethod.emit('execute', data.id);
-		//interactionShortcut.emit('saveInteractionShortcut', interactionList);
-		log.emit('debugLog', '<< interactionShortcut method "extractionFromJson"');
-	});
-	
-	/*
-	interactionShortcut.on('saveInteractionShortcut', function(_array) {
-		log.emit('debugLog', '>> interactionShortcut method "saveInteractionShortcut"');
-		
-		interactionShortcut.emit('convertArrayToJson', _array);
-		log.emit('debugLog', '<< interactionShortcut method "saveInteractionShortcut"');
-	});
-	
-	interactionShortcut.on('convertArrayToJson', function(_array) {
-		log.emit('debugLog', '>> interactionShortcut method "convertArrayToJson"');
-		
-		//***************************************************************************
-		//My code *******************************************************************
-		//***************************************************************************
-		var myarray = [];
-		var myJSON = "";
-		for (var i in _array) {
-			var item = {
-				"value": i,
-				"label": i
-			};
-			myarray.push(item);
+		if (data.method == 'execute') {
+			jeedomProcess.emit('execute');
 		}
-		myJSON = JSON.stringify({myarray: myarray});
-		
-		log.emit('debugLog', 'myJSON');
-		log.emit('debugLog', myJSON);
-		
-		callbackReturn.emit('tts', 'interactionShortcut method "convertArrayToJson" in progress');
-		//interactionShortcut.emit('writeFile', json);
-		log.emit('debugLog', '<< interactionShortcut method "convertArrayToJson"');
+		else {
+			jeedomProcess.emit('unknown');
+		}
+		log.emit('debugLog', '<< interactionShortcut method "checkSentence"');
 	});
 	
-	interactionShortcut.on('writeFile', function(_json) {
-		log.emit('debugLog', '>> interactionShortcut method "writeFile"');
-		
-        var fs = require('fs');
-        fs.writeFile(pathJson, _json, function(err) {
-            if (err) {
-				log.emit('log', 'Writing file "' + pathJson + '" failed');
-				log.emit('debugLog', err);
-				callbackReturn.emit('tts', 'Making interaction for raspberry pi failed');
-				log.emit('debugLog', '<< interactionShortcut method "writeFile"');
-            } else {
-				log.emit('debugLog', 'Writing file "' + pathJson + '" succeed');
-				callbackReturn.emit('tts', 'Mise à jour du xml réussi');
-				log.emit('debugLog', '<< interactionShortcut method "writeFile"');
-            }
-        });
-	});
-	*/
 	
-	/************************************************
-	** jeedomMethod method
-	************************************************/
-	var jeedomMethod = new EventEmitter();
+	/************************************************************************************************
+	** jeedomProcess method
+	************************************************************************************************/
+	var jeedomProcess = new EventEmitter();
 	
-    jeedomMethod.on('execute', function(message) {
-		log.emit('debugLog', '>> jeedomMethod method "execute"');
+	/***************************************************
+	** @description Send interaction request to jeedom
+	** @function execute
+	***************************************************/
+    jeedomProcess.on('execute', function() {
+		log.emit('debugLog', '>> jeedomProcess method "execute"');
 		log.emit('log', '--------Execute--------');
-		var jsonrpc = generateJsonRpc();
+		var jsonrpc = GenerateJsonRpc();
 		jsonrpc.method = 'execute';
 		for (var i in data) {
 			jsonrpc.params[i] = data[i];
 		}
-		sendJsonRequest.emit('start', jsonrpc, readReturn);
-		log.emit('debugLog', '<< jeedomMethod method "execute"');
+		sendJsonRequest.emit('start', jsonrpc, ReadReturn);
+		log.emit('debugLog', '<< jeedomProcess method "execute"');
 	});
 	
-    jeedomMethod.on('update', function(message) {
-		log.emit('debugLog', '>> jeedomMethod method "update"');
+	/***************************************************
+	** @description Update interaction xml file
+	** @function update
+	***************************************************/
+    jeedomProcess.on('update', function() {
+		log.emit('debugLog', '>> jeedomProcess method "update"');
 		log.emit('log', '--------Update--------');
-		var jsonrpc = generateJsonRpc();
+		var jsonrpc = GenerateJsonRpc();
 		jsonrpc.method = 'updateXml';
-		sendJsonRequest.emit('start', jsonrpc, updateXml);
-		log.emit('debugLog', '<< jeedomMethod method "update"');
+		sendJsonRequest.emit('start', jsonrpc, UpdateXml);
+		log.emit('debugLog', '<< jeedomProcess method "update"');
 	});
 	
-	/************************************************
-	** sendJsonRequest method
-	************************************************/
-	var sendJsonRequest = new EventEmitter();
-	var pathJeedomApi = '/core/api/jeeApi.php';
+	/***************************************************
+	** @description interaction unknown
+	** @function unknown
+	***************************************************/
+    jeedomProcess.on('unknown', function() {
+		log.emit('debugLog', '>> jeedomProcess method "unknown"');
+		log.emit('log', '--------unknown-------');
+		log.emit('log', 'Aucune interaction correspondante');
+		callbackReturn.emit('tts', "Je n'est pas compris");
+		log.emit('debugLog', '<< jeedomProcess method "unknown"');
+	});
 	
+	
+	/************************************************************************************************
+	** sendJsonRequest method
+	************************************************************************************************/
+	var sendJsonRequest = new EventEmitter();
+	
+	/***************************************************
+	** @description Send json request to jeedom and execute callback
+	** @function sendJsonRequest
+	** @param string _jsonrpc
+	** @param function callback sendJsonRequest
+	***************************************************/
     sendJsonRequest.on('start', function(_jsonrpc, intCallback) {
 		log.emit('debugLog', '>> sendJsonRequest method "start"');
 		
@@ -282,23 +291,49 @@
 				log.emit('log', 'Error: Callback request');
 				log.emit('debugLog', err);
 				log.emit('debugLog', response);
-                processReturn(false, intCallback);
+                ProcessReturn(false, intCallback);
                 return 0;
             }
             log.emit('log', '-------REQUEST RESULT-------');
             log.emit('log', json);
             log.emit('debugLog', '----------------------------');
-            processReturn(JSON.parse(json), intCallback);
+            ProcessReturn(JSON.parse(json), intCallback);
             return 0;
         });
 		
 		log.emit('debugLog', '<< sendJsonRequest method "start"');
 	});
 	
-	/************************************************
+	
+	/************************************************************************************************
 	** function
-	************************************************/
-    function generateJsonRpc() {
+	************************************************************************************************/
+	
+	/***************************************************
+	** @description Clearing string to delete and replace special character
+	** @function ClearString
+	** @param string _string
+	** @return string
+	***************************************************/
+	function ClearString(_string) {
+		_string = _string.toLowerCase();
+		_string = _string.replace(/[èéêë]/g, "e");
+		_string = _string.replace(/[ç]/g, "c");
+		_string = _string.replace(/[à]/g, "a");
+		_string = _string.replace(/[ï]/g, "i");
+		_string = _string.trim();
+		while (_string.search('  ') != -1) {
+			_string = _string.replace("  ", " ");
+		}
+		return _string;
+	}
+	
+	/***************************************************
+	** @description Generate json rpc for jeedom
+	** @function GenerateJsonRpc
+	** @return string json
+	***************************************************/
+    function GenerateJsonRpc() {
         var jsonrpc = {};
         jsonrpc.id = data.id;
         jsonrpc.params = {};
@@ -308,36 +343,54 @@
         return jsonrpc;
     }
 	
-    function updateXml(_xml) {
+	/***************************************************
+	** @description Update xml file from jeedom
+	** @function UpdateXml
+	** @param file _xml
+	***************************************************/
+    function UpdateXml(_xml) {
         log.emit('log', 'Ecriture du fichier xml');
         var fs = require('fs');
         fs.writeFile(pathXml, _xml, function(err) {
             if (err) {
-				log.emit('debugLog', 'Error: callback fs.writeFile')
+				log.emit('log', 'Error: callback fs.writeFile')
 				log.emit('debugLog', err)
 				callbackReturn.emit('tts', err);
             } else {
 				log.emit('log', 'Mise à jour du xml réussi');
 				
 				//for Raspberry pi
-				//interactionShortcut.emit('make');
 				callbackReturn.emit('tts', 'Mise à jour du xml réussi');
             }
         });
     }
-
-    function readReturn(_return) {
+	
+	/***************************************************
+	** @description Update xml file from jeedom
+	** @function ReadReturn
+	** @param string _return
+	***************************************************/
+    function ReadReturn(_return) {
 		callbackReturn.emit('tts', _return);
     }
-
-    function processReturn(_return, intCallback) {
+	
+	/***************************************************
+	** @description Update xml file from jeedom
+	** @function ProcessReturn
+	** @param string or object _return
+	** @param function intCallback
+	** @return ?
+	***************************************************/
+    function ProcessReturn(_return, intCallback) {
 		if (_return === false) {
+			log.emit('log', 'Echec de la requete à jeedom (retour=faux)');
 			callbackReturn.emit('tts', 'Echec de la requete à jeedom (retour=faux)');
-			log.emit('log', _return);
+			log.emit('debugLog', _return);
 			return;
 		}
-		if (isset(_return.error)) {
-			if (isset(_return.error.message)) {
+		if (Isset(_return.error)) {
+			if (Isset(_return.error.message)) {
+				log.emit('log', _return.error.message);
 				callbackReturn.emit('tts', _return.error.message);
 			} else {
 				callbackReturn.emit('tts', 'Echec de la requete à jeedom (no return message');
@@ -348,7 +401,12 @@
 		}
 	}
 	
-	function isset() {
+	/***************************************************
+	** @description ?
+	** @function Isset
+	** @return ?
+	***************************************************/
+	function Isset() {
 		var a = arguments,
 			l = a.length,
 			i = 0,
@@ -367,36 +425,30 @@
 		return true;
 	}
 	
-	/************************************************
-	** main
-	************************************************/
 	
+	/************************************************************************************************
+	** Main
+	************************************************************************************************/
 	log.emit('log', 'Plugin "jeedom" for Sarah starting');
-	
+	log.emit('debugLog', data);
 	config = config.modules.jeedom;
 	
-	//Start interaction
-	
-	log.emit('debugLog', data);
-	//Detection raspberry pi mode
+	//Raspberry pi mode
 	if (data.emulate) {
-		interactionShortcut.emit('detection', data.emulate);
+		interactionShortcut.emit('raspberryModeStart');
 		
 	//PC mode
 	//"execute" method detected
 	} else if (data.method == 'execute') {
-		jeedomMethod.emit('execute', data.id);
+		jeedomProcess.emit('execute');
 		
 	//"update" method detected
 	} else if (data.method == 'update') {
-		jeedomMethod.emit('update');
+		jeedomProcess.emit('update');
 		
 	//Nope method detected
 	} else {
-		log.emit('log', 'Aucune méthode correspondance');
-		callbackReturn.emit('tts', 'Aucune méthode correspondance');
+		jeedomProcess.emit('unknown');
 	}
-	
-	
 	
 };

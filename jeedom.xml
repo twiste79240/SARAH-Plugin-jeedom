@@ -1,21 +1,15 @@
-<grammar version="1.0" xml:lang="fr-FR" mode="voice" root="ruleJeedom" xmlns="http://www.w3.org/2001/06/grammar" tag-format="semantics/1.0">
-<rule id="ruleJeedom" scope="public">
-<tag>out.action=new Object(); </tag>
-<item>Sarah</item>
-<one-of>
-<item>allume la lumière<tag>out.action.id="73"; out.action.method="execute"</tag></item>
-<item>allumer la lumière<tag>out.action.id="74"; out.action.method="execute"</tag></item>
-<item>allume les lumières<tag>out.action.id="79"; out.action.method="execute"</tag></item>
-<item>allumer les lumières<tag>out.action.id="80"; out.action.method="execute"</tag></item>
-<item>éteins la lumière<tag>out.action.id="81"; out.action.method="execute"</tag></item>
-<item>éteins les lumière<tag>out.action.id="83"; out.action.method="execute"</tag></item>
-<item>éteins les lumières<tag>out.action.id="87"; out.action.method="execute"</tag></item>
-<item>éteindre les lumières<tag>out.action.id="88"; out.action.method="execute"</tag></item>
-<item>faut'il sortir la poubelle<tag>out.action.id="177"; out.action.method="execute"</tag></item>
-<item>sortir la poubelle<tag>out.action.id="178"; out.action.method="execute"</tag></item>
-<item>faut'il sortir les poubelles<tag>out.action.id="183"; out.action.method="execute"</tag></item>
-<item>sortir les poubelles<tag>out.action.id="184"; out.action.method="execute"</tag></item>
-</one-of>
-<tag>out.action._attributes.uri="http://127.0.0.1:8080/sarah/jeedom";</tag>
-</rule>
+<grammar version="1.0" xml:lang="fr-FR" mode="voice" root="ruleArret" xmlns="http://www.w3.org/2001/06/grammar" tag-format="semantics/1.0">
+    <rule id="ruleArret" scope="public">
+        <tag>out.action=new Object(); </tag>
+        <one-of>
+            <item>
+                <ruleref uri="#ruleAr"/>
+                <tag>out.action = rules.ruleAr;</tag>
+            </item>
+        </one-of>
+        <tag>out.action._attributes.uri="http://127.0.0.1:8080/sarah/plugins/jeedom";</tag>
+    </rule>
+    <rule id="ruleAr">
+        <item weight="7">Sarah</item>
+    </rule> 
 </grammar>
