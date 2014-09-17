@@ -16,7 +16,7 @@
  */
 
  exports.action = function(data, callback, config, SARAH) {
-    var debug = true;//false;
+    var debug = false;
 	
 	/************************************************************************************************
 	** require list
@@ -173,7 +173,6 @@
 	interactionShortcut.on('checkSentence', function(interactionList) {
 		log.emit('debugLog', '>> interactionShortcut method "checkSentence"');
 		log.emit('debugLog', data.emulate);
-		//var string = ClearString(data.emulate);
 		log.emit('debugLog', ClearString(data.emulate));
 		
 		//Check all user
@@ -200,8 +199,6 @@
 							//Set information for next step
 							data.id = interactionList[key][sentence]['id'];
 							data.method = interactionList[key][sentence]['method'];
-							//string = ClearString(string.replace(sentence, ""));
-							//break;
 						}
 					}
 				}
@@ -362,7 +359,6 @@
         fs.writeFile(pathXml, _xml, function(err) {
             if (err) {
 				log.emit('log', 'ERREUR Sarah: Update du fichier jeedom.xml impossible')
-				ERREUR Sarah: Update du fichier jeedom.xml impossible
 				log.emit('debugLog', err)
 				callbackReturn.emit('tts', 'ERREUR Sarah: Update du fichier jeedom.xml impossible');
             } else {
