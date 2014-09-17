@@ -16,7 +16,7 @@
  */
 
  exports.action = function(data, callback, config, SARAH) {
-    var debug = true;//false;
+    var debug = false;//true;
 	
 	/************************************************************************************************
 	** require list
@@ -173,36 +173,28 @@
 	interactionShortcut.on('checkSentence', function(interactionList) {
 		log.emit('debugLog', '>> interactionShortcut method "checkSentence"');
 		log.emit('debugLog', data.emulate);
-		//var string = ClearString(data.emulate);
-		log.emit('debugLog', ClearString(data.emulate));
+		var string = ClearString(data.emulate);
+		log.emit('debugLog', string);
 		
 		//Check all user
 		var n = 0;
-		var length = 0;
 		for (key in interactionList) {
-		
-			var string = ClearString(data.emulate);
 			n = string.search(key);
 			
 			if (n != -1) {
 				string = ClearString(string.replace(key, ""));
-				log.emit('debugLog', 'Correspondance to ' + key);
 				
 				//Check all interaction sentence
 				for (sentence in interactionList[key]) {
 					n = string.search(sentence);
 					
 					if (n != -1) {
-						log.emit('debugLog', 'Correspondance to ' + key + ' ' + sentence);
-						if (sentence.length > length) {
-							length = sentence.length;
-							log.emit('debugLog', 'Select this correspondance --> ' + key + ' ' + sentence);
-							//Set information for next step
-							data.id = interactionList[key][sentence]['id'];
-							data.method = interactionList[key][sentence]['method'];
-							//string = ClearString(string.replace(sentence, ""));
-							//break;
-						}
+						string = ClearString(string.replace(sentence, ""));
+						
+						//Set information for next step
+						data.id = interactionList[key][sentence]['id'];
+						data.method = interactionList[key][sentence]['method'];
+						break;
 					}
 				}
 			}
@@ -361,10 +353,9 @@
         var fs = require('fs');
         fs.writeFile(pathXml, _xml, function(err) {
             if (err) {
-				log.emit('log', 'ERREUR Sarah: Update du fichier jeedom.xml impossible')
-				ERREUR Sarah: Update du fichier jeedom.xml impossible
+				log.emit('log', 'Error: callback fs.writeFile')
 				log.emit('debugLog', err)
-				callbackReturn.emit('tts', 'ERREUR Sarah: Update du fichier jeedom.xml impossible');
+				callbackReturn.emit('tts', err);
             } else {
 				log.emit('log', 'Mise à jour du xml réussi');
 				
